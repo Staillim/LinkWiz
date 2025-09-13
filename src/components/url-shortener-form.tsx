@@ -127,7 +127,7 @@ export function UrlShortenerForm() {
               name="customSlug"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Custom Slug (Optional)</FormLabel>
+                  <FormLabel>Custom Link (Optional)</FormLabel>
                    <FormControl>
                       <Input placeholder="my-custom-link" {...field} />
                    </FormControl>
