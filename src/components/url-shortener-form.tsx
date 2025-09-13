@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { nanoid } from 'nanoid';
+import { suggestCustomLink } from '@/ai/flows/suggest-custom-link';
 
 const FormSchema = z.object({
   originalUrl: z.string().url({ message: 'Please enter a valid URL.' }),
@@ -29,6 +30,13 @@ const FormSchema = z.object({
 
 export function UrlShortenerForm() {
   const { toast } = useToast();
+  const [isClient, setIsClient] = useState(false);
+  const [host, setHost] = useState('');
+
+  useEffect(() => {
+    setIsClient(true);
+    setHost(window.location.host);
+  }, []);
   
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -62,7 +70,7 @@ export function UrlShortenerForm() {
 
       toast({
         title: 'Link Shortened!',
-        description: `Your new link is ready: linkwiz.pro/${shortCode}`,
+        description: `Your new link is ready: ${host}/r/${shortCode}`,
       });
       form.reset();
     } catch (error: any) {
@@ -74,12 +82,6 @@ export function UrlShortenerForm() {
     }
   };
   
-  // nanoid is ESM only, and this is a client component.
-  // This is a workaround to avoid require() issues.
-  const [isClient, setIsClient] = useState(false);
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
   if (!isClient) return null;
 
 
@@ -117,7 +119,7 @@ export function UrlShortenerForm() {
                   <div className="flex gap-2">
                     <FormControl>
                        <div className="relative w-full">
-                         <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground text-sm">linkwiz.pro/</span>
+                         <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground text-sm">{host ? `${host.replace(/https?:\/\//, '')}/r/` : ''}</span>
                          <Input placeholder="my-custom-link" className="pl-[88px]" {...field} />
                        </div>
                     </FormControl>

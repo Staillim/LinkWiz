@@ -68,17 +68,21 @@ export function LinksTable({ links, loading }: LinksTableProps) {
   const [editedOriginalUrl, setEditedOriginalUrl] = useState('');
   const [editedShortCode, setEditedShortCode] = useState('');
   const [isClient, setIsClient] = useState(false);
+  const [host, setHost] = useState('');
 
   useEffect(() => {
     setIsClient(true);
+    setHost(window.location.origin);
   }, []);
   
 
   const handleCopy = (shortCode: string) => {
-    navigator.clipboard.writeText(`https://linkwiz.pro/${shortCode}`);
+    if (!host) return;
+    const shortUrl = `${host}/r/${shortCode}`;
+    navigator.clipboard.writeText(shortUrl);
     toast({
       title: 'Copied to clipboard!',
-      description: `https://linkwiz.pro/${shortCode}`,
+      description: shortUrl,
     });
   };
 
@@ -178,7 +182,7 @@ export function LinksTable({ links, loading }: LinksTableProps) {
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          linkwiz.pro/{link.shortCode}
+                          {host ? `${host.replace(/https?:\/\//, '')}/r/${link.shortCode}` : `r/${link.shortCode}`}
                         </a>
                         <Button
                           variant="ghost"
