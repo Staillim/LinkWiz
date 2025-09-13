@@ -15,9 +15,8 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Link as LinkIcon, Loader2, Wand2 } from 'lucide-react';
-import { useActionState, useEffect, useState } from 'react';
-import { getSuggestedSlugAction } from '@/lib/actions';
+import { Link as LinkIcon, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -30,12 +29,7 @@ const FormSchema = z.object({
 
 export function UrlShortenerForm() {
   const { toast } = useToast();
-  const [isSuggesting, setIsSuggesting] = useState(false);
-  const [suggestionState, formAction] = useActionState(getSuggestedSlugAction, {
-    slug: null,
-    error: null,
-  });
-
+  
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
@@ -43,8 +37,6 @@ export function UrlShortenerForm() {
       customSlug: '',
     },
   });
-
-  const originalUrl = form.watch('originalUrl');
 
   const onSubmit = async (data: z.infer<typeof FormSchema>) => {
     const user = auth.currentUser;
@@ -81,26 +73,6 @@ export function UrlShortenerForm() {
       });
     }
   };
-  
-  const suggestSlug = () => {
-    const formData = new FormData();
-    formData.append('originalUrl', originalUrl);
-    setIsSuggesting(true);
-    formAction(formData);
-  }
-
-  useEffect(() => {
-    setIsSuggesting(false);
-    if (suggestionState?.slug) {
-      form.setValue('customSlug', suggestionState.slug);
-      toast({
-        title: 'AI Suggestion Applied',
-        description: `We've suggested a custom slug for you.`,
-      });
-    } else if (suggestionState?.error) {
-      form.setError('originalUrl', { message: suggestionState.error });
-    }
-  }, [suggestionState, form.setValue, form.setError, toast]);
   
   // nanoid is ESM only, and this is a client component.
   // This is a workaround to avoid require() issues.
@@ -149,10 +121,6 @@ export function UrlShortenerForm() {
                          <Input placeholder="my-custom-link" className="pl-[82px]" {...field} />
                        </div>
                     </FormControl>
-                    <Button type="button" variant="outline" onClick={suggestSlug} disabled={!originalUrl || form.formState.isSubmitting || isSuggesting}>
-                      {isSuggesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-                      <span className="ml-2 hidden sm:inline">Suggest</span>
-                    </Button>
                   </div>
                   <FormDescription>
                     Customize your short link for better branding.
