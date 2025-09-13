@@ -54,6 +54,7 @@ export default function StatsPage() {
   const [timeRange, setTimeRange] = useState('week');
   const [allClicks, setAllClicks] = useState<any[]>([]);
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -221,6 +222,13 @@ export default function StatsPage() {
     return format(new Date(value), 'd');
   };
 
+  const handleMonthSelect = (day: Date | undefined) => {
+    if (day) {
+        setSelectedMonth(day);
+        setIsCalendarOpen(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <h1 className="text-2xl md:text-3xl font-bold font-headline flex items-center gap-2">
@@ -260,45 +268,47 @@ export default function StatsPage() {
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <CardTitle>Rendimiento de Clics</CardTitle>
-              <CardDescription>Evolución de los clics en el período seleccionado.</CardDescription>
-            </div>
-             <div className="flex items-center gap-2">
-                <Tabs value={timeRange} onValueChange={setTimeRange} className="w-full sm:w-auto">
-                    <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="week">Esta semana</TabsTrigger>
-                    <TabsTrigger value="month">Este mes</TabsTrigger>
-                    </TabsList>
-                </Tabs>
-                {timeRange === 'month' && (
-                    <Popover>
-                        <PopoverTrigger asChild>
-                        <Button
-                            variant={'outline'}
-                            className="w-[200px] justify-start text-left font-normal"
-                        >
-                            <CalendarIcon className="mr-2 h-4 w-4" />
-                            {format(selectedMonth, 'MMMM yyyy', { locale: es })}
-                        </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                        <Calendar
-                            mode="single"
-                            selected={selectedMonth}
-                            onSelect={(day) => day && setSelectedMonth(day)}
-                            defaultMonth={selectedMonth}
-                            initialFocus
-                            captionLayout="dropdown-buttons"
-                            fromYear={getYear(subMonths(new Date(), 24))}
-                            toYear={getYear(new Date())}
-                            disabled={(date) => date > new Date() || date < new Date('2022-01-01')}
-                        />
-                        </PopoverContent>
-                    </Popover>
-                )}
-            </div>
+              <div className='flex-1'>
+                <CardTitle>Rendimiento de Clics</CardTitle>
+                <CardDescription>Evolución de los clics en el período seleccionado.</CardDescription>
+              </div>
+               <div className="flex items-center gap-2">
+                  <Tabs value={timeRange} onValueChange={setTimeRange} className="w-full sm:w-auto">
+                      <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="week">Esta semana</TabsTrigger>
+                      <TabsTrigger value="month">Este mes</TabsTrigger>
+                      </TabsList>
+                  </Tabs>
+              </div>
           </div>
+          {timeRange === 'month' && (
+              <div className="mt-4 flex justify-start">
+                  <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+                      <PopoverTrigger asChild>
+                      <Button
+                          variant={'outline'}
+                          className="w-[200px] justify-start text-left font-normal"
+                      >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {format(selectedMonth, 'MMMM yyyy', { locale: es })}
+                      </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                      <Calendar
+                          mode="single"
+                          selected={selectedMonth}
+                          onSelect={handleMonthSelect}
+                          defaultMonth={selectedMonth}
+                          initialFocus
+                          captionLayout="dropdown-buttons"
+                          fromYear={getYear(subMonths(new Date(), 24))}
+                          toYear={getYear(new Date())}
+                          disabled={(date) => date > new Date() || date < new Date('2022-01-01')}
+                      />
+                      </PopoverContent>
+                  </Popover>
+              </div>
+          )}
         </CardHeader>
         <CardContent>
           {loading ? (
