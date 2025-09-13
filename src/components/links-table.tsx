@@ -16,6 +16,7 @@ import {
   Trash2,
   BarChart2,
   ExternalLink,
+  Loader2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -50,22 +51,32 @@ import { useEffect, useState } from 'react';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
+import { deleteDoc, doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { Skeleton } from './ui/skeleton';
 
 type LinksTableProps = {
   links: Link[];
+  loading: boolean;
 };
 
-export function LinksTable({ links: initialLinks }: LinksTableProps) {
+export function LinksTable({ links: initialLinks, loading }: LinksTableProps) {
   const { toast } = useToast();
   const [links, setLinks] = useState<Link[]>(initialLinks);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedLink, setSelectedLink] = useState<Link | null>(null);
+  const [editedOriginalUrl, setEditedOriginalUrl] = useState('');
+  const [editedShortCode, setEditedShortCode] = useState('');
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
   }, []);
+  
+  useEffect(() => {
+    setLinks(initialLinks);
+  }, [initialLinks]);
 
   const handleCopy = (shortCode: string) => {
     navigator.clipboard.writeText(`linkwiz.io/${shortCode}`);
@@ -82,28 +93,50 @@ export function LinksTable({ links: initialLinks }: LinksTableProps) {
 
   const openEditDialog = (link: Link) => {
     setSelectedLink(link);
+    setEditedOriginalUrl(link.originalUrl);
+    setEditedShortCode(link.shortCode);
     setIsEditDialogOpen(true);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selectedLink) return;
-    setLinks(links.filter((link) => link.id !== selectedLink.id));
-    toast({
-      title: 'Link deleted',
-      description: 'The link has been successfully deleted.',
-      variant: 'destructive',
-    });
+    try {
+      await deleteDoc(doc(db, 'links', selectedLink.id));
+      toast({
+        title: 'Link deleted',
+        description: 'The link has been successfully deleted.',
+        variant: 'destructive',
+      });
+    } catch (error) {
+       toast({
+        title: 'Error',
+        description: 'Failed to delete link.',
+        variant: 'destructive',
+      });
+    }
     setIsDeleteDialogOpen(false);
     setSelectedLink(null);
   };
   
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!selectedLink) return;
-    // Here you would typically call an API to update the link
-    toast({
-      title: 'Link updated',
-      description: 'The link has been successfully updated.',
-    });
+    try {
+      const linkRef = doc(db, 'links', selectedLink.id);
+      await updateDoc(linkRef, {
+        originalUrl: editedOriginalUrl,
+        shortCode: editedShortCode,
+      });
+      toast({
+        title: 'Link updated',
+        description: 'The link has been successfully updated.',
+      });
+    } catch (error) {
+       toast({
+        title: 'Error',
+        description: 'Failed to update link.',
+        variant: 'destructive',
+      });
+    }
     setIsEditDialogOpen(false);
     setSelectedLink(null);
   };
@@ -128,91 +161,103 @@ export function LinksTable({ links: initialLinks }: LinksTableProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {links.map((link) => (
-                <TableRow key={link.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                       <a
-                        href="#"
-                        className="font-medium text-primary hover:underline"
+              {loading ? (
+                 Array.from({ length: 3 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-48" /></TableCell>
+                    <TableCell className="hidden sm:table-cell"><Skeleton className="h-5 w-12" /></TableCell>
+                    <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-8 w-8 rounded-full" /></TableCell>
+                  </TableRow>
+                ))
+              ) : links.length > 0 ? (
+                links.map((link) => (
+                  <TableRow key={link.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                         <a
+                          href={`/r/${link.shortCode}`}
+                          className="font-medium text-primary hover:underline"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          linkwiz.io/{link.shortCode}
+                        </a>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => handleCopy(link.shortCode)}
+                        >
+                          <Copy className="h-4 w-4" />
+                          <span className="sr-only">Copy</span>
+                        </Button>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell max-w-xs truncate">
+                      <a
+                        href={link.originalUrl}
+                        className="text-muted-foreground hover:text-foreground"
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        linkwiz.io/{link.shortCode}
+                        {link.originalUrl}
                       </a>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => handleCopy(link.shortCode)}
-                      >
-                        <Copy className="h-4 w-4" />
-                        <span className="sr-only">Copy</span>
-                      </Button>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell max-w-xs truncate">
-                    <a
-                      href={link.originalUrl}
-                      className="text-muted-foreground hover:text-foreground"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {link.originalUrl}
-                    </a>
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    <div className="flex items-center gap-1">
-                      <BarChart2 className="h-4 w-4 text-muted-foreground" />
-                      {isClient ? link.clicks.toLocaleString() : link.clicks}
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground">
-                    {format(parseISO(link.createdAt), 'MMM d, yyyy')}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button aria-haspopup="true" size="icon" variant="ghost">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Toggle menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => openEditDialog(link)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => alert(`Viewing stats for ${link.shortCode}`)}
-                        >
-                          <BarChart2 className="mr-2 h-4 w-4" />
-                          View Stats
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                            <a href={link.originalUrl} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="mr-2 h-4 w-4" />
-                                Open Original
-                            </a>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => openDeleteDialog(link)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))}
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <div className="flex items-center gap-1">
+                        <BarChart2 className="h-4 w-4 text-muted-foreground" />
+                        {isClient ? link.clicks.toLocaleString() : link.clicks}
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-muted-foreground">
+                      {isClient ? format(parseISO(link.createdAt), 'MMM d, yyyy') : ''}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Toggle menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuItem onClick={() => openEditDialog(link)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => alert(`Viewing stats for ${link.shortCode}`)}
+                          >
+                            <BarChart2 className="mr-2 h-4 w-4" />
+                            View Stats
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                              <a href={link.originalUrl} target="_blank" rel="noopener noreferrer">
+                                  <ExternalLink className="mr-2 h-4 w-4" />
+                                  Open Original
+                              </a>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => openDeleteDialog(link)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : null}
             </TableBody>
           </Table>
         </div>
-        {links.length === 0 && (
+        {!loading && links.length === 0 && (
           <div className="text-center p-8 text-muted-foreground">
             You haven't created any links yet.
           </div>
@@ -258,7 +303,8 @@ export function LinksTable({ links: initialLinks }: LinksTableProps) {
               </Label>
               <Input
                 id="originalUrl"
-                defaultValue={selectedLink?.originalUrl}
+                value={editedOriginalUrl}
+                onChange={(e) => setEditedOriginalUrl(e.target.value)}
                 className="col-span-3"
               />
             </div>
@@ -268,7 +314,8 @@ export function LinksTable({ links: initialLinks }: LinksTableProps) {
               </Label>
               <Input
                 id="shortCode"
-                defaultValue={selectedLink?.shortCode}
+                value={editedShortCode}
+                onChange={(e) => setEditedShortCode(e.target.value)}
                 className="col-span-3"
               />
             </div>

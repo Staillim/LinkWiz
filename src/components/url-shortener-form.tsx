@@ -15,11 +15,13 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Link as LinkIcon, Loader2, Sparkles, Wand2 } from 'lucide-react';
-import { useActionState } from 'react';
+import { Link as LinkIcon, Loader2, Wand2 } from 'lucide-react';
+import { useActionState, useEffect, useState } from 'react';
 import { getSuggestedSlugAction } from '@/lib/actions';
-import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
+import { nanoid } from 'nanoid';
 
 const FormSchema = z.object({
   originalUrl: z.string().url({ message: 'Please enter a valid URL.' }),
@@ -44,15 +46,40 @@ export function UrlShortenerForm() {
 
   const originalUrl = form.watch('originalUrl');
 
-  const onSubmit = (data: z.infer<typeof FormSchema>) => {
-    console.log(data);
-    toast({
-      title: 'Link Shortened!',
-      description: `Your new link is ready: linkwiz.io/${
-        data.customSlug || 'xyz123'
-      }`,
-    });
-    form.reset();
+  const onSubmit = async (data: z.infer<typeof FormSchema>) => {
+    const user = auth.currentUser;
+    if (!user) {
+      toast({
+        title: 'Error',
+        description: 'You must be logged in to create a link.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    const shortCode = data.customSlug || nanoid(6);
+
+    try {
+      await addDoc(collection(db, 'links'), {
+        originalUrl: data.originalUrl,
+        shortCode: shortCode,
+        clicks: 0,
+        createdAt: serverTimestamp(),
+        userId: user.uid,
+      });
+
+      toast({
+        title: 'Link Shortened!',
+        description: `Your new link is ready: linkwiz.io/${shortCode}`,
+      });
+      form.reset();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: 'Failed to create link. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
   
   const suggestSlug = () => {
@@ -74,6 +101,15 @@ export function UrlShortenerForm() {
       form.setError('originalUrl', { message: suggestionState.error });
     }
   }, [suggestionState, form.setValue, form.setError, toast]);
+  
+  // nanoid is ESM only, and this is a client component.
+  // This is a workaround to avoid require() issues.
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+  if (!isClient) return null;
+
 
   return (
     <Card>

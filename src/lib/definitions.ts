@@ -4,4 +4,5 @@ export type Link = {
   shortCode: string;
   clicks: number;
   createdAt: string;
+  userId: string;
 };
