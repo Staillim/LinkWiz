@@ -29,6 +29,8 @@ import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getDeviceFromUserAgent } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { subDays, startOfDay } from 'date-fns';
 
 type TopListItem = {
   name: string;
@@ -44,6 +46,8 @@ export default function StatsPage() {
   const [topCities, setTopCities] = useState<TopListItem[]>([]);
   const [topDevices, setTopDevices] = useState<TopListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [timeRange, setTimeRange] = useState('month');
+  const [allClicks, setAllClicks] = useState<any[]>([]);
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -87,24 +91,10 @@ export default function StatsPage() {
         };
       });
 
+      setAllClicks(userClicks);
       setTotalClicks(userClicks.length);
       
-      // Process stats only if there are clicks
       if (userClicks.length > 0) {
-        const clicksByDay = userClicks.reduce((acc, click) => {
-          const date = click.timestamp.toISOString().split('T')[0];
-          if (!acc[date]) {
-            acc[date] = { date, count: 0 };
-          }
-          acc[date].count++;
-          return acc;
-        }, {} as Record<string, { date: string; count: number }>);
-        
-        const sortedChartData = Object.values(clicksByDay).sort(
-          (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-        );
-        setChartData(sortedChartData);
-        
         const processTopList = (key: 'country' | 'city' | 'userAgent') => {
           const counts = userClicks.reduce((acc, click) => {
             let value: string | null = null;
@@ -129,9 +119,7 @@ export default function StatsPage() {
         setTopCountries(processTopList('country'));
         setTopCities(processTopList('city'));
         setTopDevices(processTopList('userAgent'));
-
       } else {
-        setChartData([]);
         setTopCountries([]);
         setTopCities([]);
         setTopDevices([]);
@@ -142,6 +130,33 @@ export default function StatsPage() {
 
     fetchData();
   }, [user, authLoading]);
+  
+  useEffect(() => {
+    if (allClicks.length === 0) {
+      setChartData([]);
+      return;
+    };
+
+    const now = new Date();
+    const startDate = startOfDay(subDays(now, timeRange === 'month' ? 30 : 7));
+
+    const filteredClicks = allClicks.filter(click => click.timestamp >= startDate);
+
+    const clicksByDay = filteredClicks.reduce((acc, click) => {
+      const date = click.timestamp.toISOString().split('T')[0];
+      if (!acc[date]) {
+        acc[date] = { date, count: 0 };
+      }
+      acc[date].count++;
+      return acc;
+    }, {} as Record<string, { date: string; count: number }>);
+    
+    const sortedChartData = Object.values(clicksByDay).sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    setChartData(sortedChartData);
+  }, [allClicks, timeRange]);
 
   const chartConfig = {
     clicks: {
@@ -218,8 +233,18 @@ export default function StatsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Rendimiento de Clics</CardTitle>
-          <CardDescription>Evolución de los clics en los últimos días.</CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle>Rendimiento de Clics</CardTitle>
+              <CardDescription>Evolución de los clics en el período seleccionado.</CardDescription>
+            </div>
+             <Tabs value={timeRange} onValueChange={setTimeRange} className="w-full sm:w-auto">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="week">Esta semana</TabsTrigger>
+                  <TabsTrigger value="month">Este mes</TabsTrigger>
+                </TabsList>
+            </Tabs>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
