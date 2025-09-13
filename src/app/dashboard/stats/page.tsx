@@ -34,7 +34,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { getDeviceFromUserAgent } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, format, subMonths, getMonth, getYear, isEqual, startOfDay } from 'date-fns';
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, format, subMonths, getYear, getDay } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 type TopListItem = {
@@ -53,7 +53,7 @@ export default function StatsPage() {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('week');
   const [allClicks, setAllClicks] = useState<any[]>([]);
-  const [selectedMonth, setSelectedMonth] = useState<Date>(startOfDay(new Date()));
+  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -208,6 +208,17 @@ export default function StatsPage() {
       </CardContent>
     </Card>
   );
+  
+  const formatXAxisTick = (value: string) => {
+    if (timeRange === 'week') {
+      const dayIndex = getDay(new Date(value));
+      // Adjust because getDay is 0 (Sun) - 6 (Sat) and we want weekStartsOn: 1 (Mon)
+      const adjustedIndex = (dayIndex + 6) % 7; 
+      const dayNames = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
+      return dayNames[adjustedIndex];
+    }
+    return format(new Date(value), 'd');
+  };
 
   return (
     <div className="space-y-8">
@@ -274,7 +285,7 @@ export default function StatsPage() {
                         <Calendar
                             mode="single"
                             selected={selectedMonth}
-                            onSelect={(day) => day && setSelectedMonth(startOfDay(day))}
+                            onSelect={(day) => day && setSelectedMonth(day)}
                             defaultMonth={selectedMonth}
                             initialFocus
                             captionLayout="dropdown-buttons"
@@ -293,14 +304,14 @@ export default function StatsPage() {
             <Skeleton className="h-[250px] w-full" />
           ) : chartData.length > 0 ? (
             <ChartContainer config={chartConfig} className="h-[250px] w-full">
-              <AreaChart data={chartData} margin={{ left: 12, right: 12, bottom: 20 }}>
+              <AreaChart data={chartData} margin={{ left: -20, right: 12, bottom: 20 }}>
                 <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="date"
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
-                  tickFormatter={(value) => format(new Date(value), 'd')}
+                  tickFormatter={formatXAxisTick}
                   label={{ value: timeRange === 'month' ? format(selectedMonth, 'MMMM', {locale: es}) : 'Días de la semana', position: 'insideBottom', offset: -15, fill: 'hsl(var(--muted-foreground))' }}
                 />
                 <ChartTooltip
