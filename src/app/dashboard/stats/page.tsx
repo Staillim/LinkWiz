@@ -34,7 +34,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { getDeviceFromUserAgent } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, format, subMonths, getYear, getDay } from 'date-fns';
+import { startOfWeek, eachDayOfInterval, format, subMonths, getYear, getDay, startOfMonth, endOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 type TopListItem = {
@@ -144,9 +144,10 @@ export default function StatsPage() {
     }
 
     let interval;
+    const today = new Date();
+
     if (timeRange === 'week') {
-        const today = new Date();
-        interval = { start: startOfWeek(today, { weekStartsOn: 1 }), end: endOfWeek(today, { weekStartsOn: 1 }) };
+        interval = { start: startOfWeek(today, { weekStartsOn: 1 }), end: today };
     } else { // month
         interval = { start: startOfMonth(selectedMonth), end: endOfMonth(selectedMonth) };
     }
