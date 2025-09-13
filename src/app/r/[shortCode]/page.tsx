@@ -37,22 +37,35 @@ async function trackAndRedirect(shortCode: string) {
 
   try {
     const headersList = headers();
+    
+    // 1. Get IP
     const xff = headersList.get('x-forwarded-for');
     const ipCandidate = xff ? xff.split(',')[0].trim() : headersList.get('x-real-ip') ?? 'unknown';
 
-    let geoData: any = {};
-    if (ipCandidate && ipCandidate !== 'unknown' && !ipCandidate.startsWith('127.')) {
-        const geoResponse = await fetch(`https://ipapi.co/${ipCandidate}/json/`);
-        if (geoResponse.ok) {
-            geoData = await geoResponse.json();
+    // 2. Try to get geo data from hosting headers first
+    let city = headersList.get('x-vercel-ip-city') ?? null;
+    let country = headersList.get('x-vercel-ip-country') ?? null;
+    
+    // 3. Fallback to external API if headers are not available
+    if ((!city || !country) && ipCandidate && ipCandidate !== 'unknown' && !ipCandidate.startsWith('127.')) {
+        try {
+            const geoResponse = await fetch(`https://ipapi.co/${ipCandidate}/json/`);
+            if (geoResponse.ok) {
+                const geoData = await geoResponse.json();
+                if (!geoData.error) {
+                    city = city ?? geoData.city ?? null;
+                    country = country ?? geoData.country_name ?? geoData.country ?? null;
+                }
+            }
+        } catch (geoError) {
+             console.error('Geolocation API fetch failed:', geoError);
         }
     }
 
     const userAgent = headersList.get('user-agent') ?? null;
-    const ipAddress = geoData.ip ?? ipCandidate;
-    const city = geoData.city ?? null;
-    const country = geoData.country_name ?? geoData.country ?? null;
+    const ipAddress = ipCandidate;
 
+    // 4. Save to firestore
     const clickData = {
       linkId,
       timestamp: serverTimestamp(),
