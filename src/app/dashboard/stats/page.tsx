@@ -217,10 +217,9 @@ export default function StatsPage() {
   const formatXAxisTick = (value: string) => {
     if (timeRange === 'week') {
       const dayIndex = getDay(new Date(value));
-      // Adjust because getDay is 0 (Sun) - 6 (Sat) and we want weekStartsOn: 1 (Mon)
-      const adjustedIndex = (dayIndex + 6) % 7; 
-      const dayNames = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
-      return dayNames[adjustedIndex];
+      // Sunday is 0, so we map it to the end of the week.
+      const dayNames = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+      return dayNames[dayIndex];
     }
     return format(new Date(value), 'd');
   };
