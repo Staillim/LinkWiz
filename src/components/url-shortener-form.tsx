@@ -18,10 +18,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Link as LinkIcon, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { addDoc, collection, getDocs, query, serverTimestamp, where } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { nanoid } from 'nanoid';
-import { suggestCustomLink } from '@/ai/flows/suggest-custom-link';
 
 const FormSchema = z.object({
   originalUrl: z.string().url({ message: 'Please enter a valid URL.' }),
@@ -35,7 +34,7 @@ export function UrlShortenerForm() {
 
   useEffect(() => {
     setIsClient(true);
-    setHost(window.location.host);
+    setHost(window.location.origin);
   }, []);
   
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -56,8 +55,21 @@ export function UrlShortenerForm() {
       });
       return;
     }
-    
-    const shortCode = data.customSlug || nanoid(6);
+
+    let shortCode = data.customSlug || nanoid(6);
+
+    if (data.customSlug) {
+      const q = query(collection(db, 'links'), where('shortCode', '==', data.customSlug));
+      const querySnapshot = await getDocs(q);
+      if (!querySnapshot.empty) {
+        form.setError('customSlug', {
+          type: 'manual',
+          message: 'This custom slug is already in use. Please choose another one.',
+        });
+        return;
+      }
+    }
+
 
     try {
       await addDoc(collection(db, 'links'), {
@@ -116,14 +128,12 @@ export function UrlShortenerForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Custom Slug (Optional)</FormLabel>
-                  <div className="flex gap-2">
-                    <FormControl>
-                       <div className="relative w-full">
-                         <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground text-sm">{host ? `${host.replace(/https?:\/\//, '')}/r/` : ''}</span>
-                         <Input placeholder="my-custom-link" className="pl-[88px]" {...field} />
-                       </div>
-                    </FormControl>
-                  </div>
+                   <div className="flex items-center">
+                     <span className="text-muted-foreground text-sm pr-2">{host ? `${host.replace(/https?:\/\//, '')}/r/` : ''}</span>
+                      <FormControl>
+                         <Input placeholder="my-custom-link" {...field} />
+                      </FormControl>
+                   </div>
                   <FormDescription>
                     Customize your short link for better branding.
                   </FormDescription>
