@@ -19,18 +19,23 @@ import {
   Globe,
   MapPin,
   Smartphone,
+  Calendar as CalendarIcon
 } from 'lucide-react';
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getDeviceFromUserAgent } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { subDays, startOfDay } from 'date-fns';
+import { startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, format, subMonths, getMonth, getYear, isEqual, startOfDay } from 'date-fns';
+import { es } from 'date-fns/locale';
 
 type TopListItem = {
   name: string;
@@ -46,8 +51,9 @@ export default function StatsPage() {
   const [topCities, setTopCities] = useState<TopListItem[]>([]);
   const [topDevices, setTopDevices] = useState<TopListItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState('month');
+  const [timeRange, setTimeRange] = useState('week');
   const [allClicks, setAllClicks] = useState<any[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState<Date>(startOfDay(new Date()));
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -132,31 +138,39 @@ export default function StatsPage() {
   }, [user, authLoading]);
   
   useEffect(() => {
-    if (allClicks.length === 0) {
-      setChartData([]);
-      return;
-    };
+    if (allClicks.length === 0 && !loading) {
+       setChartData([]);
+       return;
+    }
 
-    const now = new Date();
-    const startDate = startOfDay(subDays(now, timeRange === 'month' ? 30 : 7));
-
-    const filteredClicks = allClicks.filter(click => click.timestamp >= startDate);
-
-    const clicksByDay = filteredClicks.reduce((acc, click) => {
-      const date = click.timestamp.toISOString().split('T')[0];
-      if (!acc[date]) {
-        acc[date] = { date, count: 0 };
-      }
-      acc[date].count++;
-      return acc;
-    }, {} as Record<string, { date: string; count: number }>);
+    let interval;
+    if (timeRange === 'week') {
+        const today = new Date();
+        interval = { start: startOfWeek(today, { weekStartsOn: 1 }), end: endOfWeek(today, { weekStartsOn: 1 }) };
+    } else { // month
+        interval = { start: startOfMonth(selectedMonth), end: endOfMonth(selectedMonth) };
+    }
     
-    const sortedChartData = Object.values(clicksByDay).sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
+    const daysInInterval = eachDayOfInterval(interval);
 
-    setChartData(sortedChartData);
-  }, [allClicks, timeRange]);
+    const clicksByDay = allClicks.reduce((acc, click) => {
+        const date = format(click.timestamp, 'yyyy-MM-dd');
+        acc[date] = (acc[date] || 0) + 1;
+        return acc;
+    }, {} as Record<string, number>);
+    
+    const dataForChart = daysInInterval.map(day => {
+        const dateStr = format(day, 'yyyy-MM-dd');
+        return {
+            date: dateStr,
+            count: clicksByDay[dateStr] || 0,
+        };
+    });
+
+    setChartData(dataForChart);
+
+}, [allClicks, timeRange, selectedMonth, loading]);
+
 
   const chartConfig = {
     clicks: {
@@ -238,12 +252,40 @@ export default function StatsPage() {
               <CardTitle>Rendimiento de Clics</CardTitle>
               <CardDescription>Evolución de los clics en el período seleccionado.</CardDescription>
             </div>
-             <Tabs value={timeRange} onValueChange={setTimeRange} className="w-full sm:w-auto">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="week">Esta semana</TabsTrigger>
-                  <TabsTrigger value="month">Este mes</TabsTrigger>
-                </TabsList>
-            </Tabs>
+             <div className="flex items-center gap-2">
+                <Tabs value={timeRange} onValueChange={setTimeRange} className="w-full sm:w-auto">
+                    <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="week">Esta semana</TabsTrigger>
+                    <TabsTrigger value="month">Este mes</TabsTrigger>
+                    </TabsList>
+                </Tabs>
+                {timeRange === 'month' && (
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <Button
+                            variant={'outline'}
+                            className="w-[200px] justify-start text-left font-normal"
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {format(selectedMonth, 'MMMM yyyy', { locale: es })}
+                        </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                        <Calendar
+                            mode="single"
+                            selected={selectedMonth}
+                            onSelect={(day) => day && setSelectedMonth(startOfDay(day))}
+                            defaultMonth={selectedMonth}
+                            initialFocus
+                            captionLayout="dropdown-buttons"
+                            fromYear={getYear(subMonths(new Date(), 24))}
+                            toYear={getYear(new Date())}
+                            disabled={(date) => date > new Date() || date < new Date('2022-01-01')}
+                        />
+                        </PopoverContent>
+                    </Popover>
+                )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -251,23 +293,22 @@ export default function StatsPage() {
             <Skeleton className="h-[250px] w-full" />
           ) : chartData.length > 0 ? (
             <ChartContainer config={chartConfig} className="h-[250px] w-full">
-              <AreaChart data={chartData} margin={{ left: 12, right: 12 }}>
+              <AreaChart data={chartData} margin={{ left: 12, right: 12, bottom: 20 }}>
                 <CartesianGrid vertical={false} />
                 <XAxis
                   dataKey="date"
                   tickLine={false}
                   axisLine={false}
                   tickMargin={8}
-                  tickFormatter={(value) =>
-                    new Date(value).toLocaleDateString('es-ES', {
-                      month: 'short',
-                      day: 'numeric',
-                    })
-                  }
+                  tickFormatter={(value) => format(new Date(value), 'd')}
+                  label={{ value: timeRange === 'month' ? format(selectedMonth, 'MMMM', {locale: es}) : 'Días de la semana', position: 'insideBottom', offset: -15, fill: 'hsl(var(--muted-foreground))' }}
                 />
                 <ChartTooltip
                   cursor={false}
-                  content={<ChartTooltipContent indicator="dot" />}
+                  content={<ChartTooltipContent 
+                    indicator="dot" 
+                    labelFormatter={(label, payload) => payload?.[0] ? format(new Date(payload[0].payload.date), 'eeee, d \'de\' MMMM', {locale: es}) : ''}
+                   />}
                 />
                 <Area
                   dataKey="count"
