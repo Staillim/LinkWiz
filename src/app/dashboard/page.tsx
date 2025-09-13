@@ -25,14 +25,16 @@ export default function DashboardPage() {
         const userLinks: LinkType[] = [];
         querySnapshot.forEach((doc) => {
           const data = doc.data();
-          userLinks.push({
-            id: doc.id,
-            originalUrl: data.originalUrl,
-            shortCode: data.shortCode,
-            clicks: data.clicks,
-            createdAt: data.createdAt.toDate().toISOString(),
-            userId: data.userId,
-          });
+          if (data.createdAt) {
+            userLinks.push({
+              id: doc.id,
+              originalUrl: data.originalUrl,
+              shortCode: data.shortCode,
+              clicks: data.clicks,
+              createdAt: data.createdAt.toDate().toISOString(),
+              userId: data.userId,
+            });
+          }
         });
         setLinks(userLinks);
         setLoading(false);
