@@ -15,7 +15,4 @@ export type Click = {
   userAgent?: string;
   country?: string;
   city?: string;
-  region?: string;
-  latitude?: number;
-  longitude?: number;
 };

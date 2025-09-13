@@ -13,13 +13,13 @@ export async function POST(req: NextRequest) {
     const ip = req.ip ?? req.headers.get('X-Forwarded-For') ?? 'unknown';
     const userAgent = req.headers.get('User-Agent') ?? 'unknown';
     
-    let geoData = {
-        ip,
-        country_name: 'unknown',
-        city: 'unknown',
-        region: 'unknown',
-        latitude: null,
-        longitude: null,
+    let clickData: any = {
+      linkId: linkId,
+      timestamp: serverTimestamp(),
+      ipAddress: ip,
+      userAgent: userAgent,
+      country: 'unknown',
+      city: 'unknown',
     };
 
     try {
@@ -27,33 +27,21 @@ export async function POST(req: NextRequest) {
         if (geoResponse.ok) {
             const data = await geoResponse.json();
             if (!data.error) {
-                 geoData = {
-                    ip: data.ip || ip,
-                    country_name: data.country_name,
+                 clickData = {
+                    ...clickData,
+                    ipAddress: data.ip || ip,
+                    country: data.country_code, // Using country_code for the short version like 'CO'
                     city: data.city,
-                    region: data.region,
-                    latitude: data.latitude,
-                    longitude: data.longitude,
                 };
             }
         }
     } catch (geoError) {
         console.error("Geolocation fetch failed:", geoError);
-        // Continue with default geoData
+        // Continue with default/partial data
     }
 
 
-    await addDoc(collection(db, 'clicks'), {
-      linkId: linkId,
-      timestamp: serverTimestamp(),
-      ipAddress: geoData.ip,
-      userAgent: userAgent,
-      country: geoData.country_name,
-      city: geoData.city,
-      region: geoData.region,
-      latitude: geoData.latitude,
-      longitude: geoData.longitude,
-    });
+    await addDoc(collection(db, 'clicks'), clickData);
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
