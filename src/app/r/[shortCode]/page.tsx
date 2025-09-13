@@ -46,26 +46,18 @@ async function trackAndRedirect(shortCode: string) {
     let city = headersList.get('x-vercel-ip-city') ?? headersList.get('x-appengine-city') ?? null;
     let country = headersList.get('x-vercel-ip-country') ?? headersList.get('x-appengine-country') ?? headersList.get('cf-ipcountry') ?? null;
     
-    // 3. Fallback to ipinfo.io if headers are not available and token is present
+    // 3. Fallback to ipinfo.io/lite if headers are not available and token is present
     if ((!city || !country) && ipCandidate && ipCandidate !== 'unknown' && !ipCandidate.startsWith('127.') && process.env.IPINFO_TOKEN) {
         try {
-            const geoResponse = await fetch(`https://ipinfo.io/${ipCandidate}?token=${process.env.IPINFO_TOKEN}`);
+            const geoResponse = await fetch(`https://api.ipinfo.io/lite/${ipCandidate}?token=${process.env.IPINFO_TOKEN}`);
             if (geoResponse.ok) {
                 const geoData = await geoResponse.json();
-                if (!geoData.error) {
-                    city = city ?? geoData.city ?? null;
-                    if (!country && geoData.country) {
-                        try {
-                            const countryName = new Intl.DisplayNames(['es'], { type: 'country' }).of(geoData.country);
-                            country = countryName ?? geoData.country;
-                        } catch (e) {
-                            country = geoData.country; // Fallback to country code if Intl fails
-                        }
-                    }
-                }
+                country = country ?? geoData.country ?? null;
+                // Lite version does not provide city
+                city = city ?? null; 
             }
         } catch (geoError) {
-             console.error('ipinfo.io fetch failed:', geoError);
+             console.error('IPinfo Lite fetch failed:', geoError);
         }
     }
 
