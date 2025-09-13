@@ -5,22 +5,35 @@ service cloud.firestore {
     
     // Function to check if a user is the owner of a link
     function isLinkOwner(linkId) {
-      return get(/databases/$(database)/documents/links/$(linkId)).data.userId == request.auth.uid;
+      // Use `exists` for safer checks against documents that might not exist.
+      return exists(/databases/$(database)/documents/links/$(linkId)) &&
+             get(/databases/$(database)/documents/links/$(linkId)).data.userId == request.auth.uid;
     }
 
-    // Links can be read by anyone for redirection, but only managed by their owner.
+    // Allow public read for redirection, but secure creation, update, and deletion.
     match /links/{linkId} {
       allow read: if true;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth.uid == resource.data.userId;
+      // Only authenticated users can create links.
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // Only the owner of the link can update or delete it.
+      allow update, delete: if request.auth != null && isLinkOwner(linkId);
     }
 
     // Clicks can be created by anyone to log a visit.
-    // They can only be read (queried) by the owner of the corresponding link.
+    // Reading click data is restricted.
     match /clicks/{clickId} {
       allow create: if true;
+      // Only the owner of the associated link can read click data.
       allow read: if request.auth != null && isLinkOwner(resource.data.linkId);
+      // Clicks are immutable.
       allow update, delete: if false;
+    }
+
+    // User data can only be read and managed by the user themselves.
+    match /users/{userId} {
+      allow read, update: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow delete: if false;
     }
   }
 }
