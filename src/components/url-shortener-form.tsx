@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -75,7 +74,6 @@ export function UrlShortenerForm() {
       await addDoc(collection(db, 'links'), {
         originalUrl: data.originalUrl,
         shortCode: shortCode,
-        clicks: 0,
         createdAt: serverTimestamp(),
         userId: user.uid,
       });

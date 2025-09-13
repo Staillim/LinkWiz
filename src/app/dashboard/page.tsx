@@ -4,7 +4,7 @@ import { LinksTable } from '@/components/links-table';
 import { UrlShortenerForm } from '@/components/url-shortener-form';
 import { auth, db } from '@/lib/firebase';
 import { Link as LinkType } from '@/lib/definitions';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, where, getDocs } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 
@@ -15,28 +15,34 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (authLoading) {
-      // Still loading user state, do nothing yet.
       return;
     }
     
     if (user) {
       const q = query(collection(db, 'links'), where('userId', '==', user.uid));
-      const unsubscribe = onSnapshot(q, (querySnapshot) => {
-        const userLinks: LinkType[] = [];
-        querySnapshot.forEach((doc) => {
+      const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+        const userLinksPromises = querySnapshot.docs.map(async (doc) => {
           const data = doc.data();
           if (data.createdAt) {
-            userLinks.push({
+            
+            const clicksQuery = query(collection(db, 'clicks'), where('linkId', '==', doc.id));
+            const clicksSnapshot = await getDocs(clicksQuery);
+
+            return {
               id: doc.id,
               originalUrl: data.originalUrl,
               shortCode: data.shortCode,
-              clicks: data.clicks,
+              clicks: clicksSnapshot.size,
               createdAt: data.createdAt.toDate().toISOString(),
               userId: data.userId,
-            });
+            };
           }
+          return null;
         });
-        setLinks(userLinks);
+
+        const resolvedLinks = (await Promise.all(userLinksPromises)).filter(Boolean) as LinkType[];
+        
+        setLinks(resolvedLinks);
         setLoading(false);
       }, (error) => {
         console.error("Error fetching links: ", error);
@@ -45,7 +51,6 @@ export default function DashboardPage() {
 
       return () => unsubscribe();
     } else {
-      // User is not logged in
       setLinks([]);
       setLoading(false);
     }

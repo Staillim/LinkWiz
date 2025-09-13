@@ -7,9 +7,9 @@ import {
   query,
   where,
   getDocs,
-  updateDoc,
-  increment,
   doc,
+  addDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
@@ -44,9 +44,10 @@ export default function ShortLinkPage({
           const linkData = linkDoc.data();
           const originalUrl = linkData.originalUrl;
 
-          // Increment clicks
-          await updateDoc(doc(db, 'links', linkDoc.id), {
-            clicks: increment(1),
+          // Add a click document
+          await addDoc(collection(db, 'clicks'), {
+            linkId: linkDoc.id,
+            timestamp: serverTimestamp(),
           });
 
           // Redirect to original URL

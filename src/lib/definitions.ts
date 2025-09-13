@@ -6,3 +6,9 @@ export type Link = {
   createdAt: string;
   userId: string;
 };
+
+export type Click = {
+  id: string;
+  linkId: string;
+  timestamp: string;
+};

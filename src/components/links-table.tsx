@@ -16,7 +16,6 @@ import {
   Trash2,
   BarChart2,
   ExternalLink,
-  Loader2,
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -51,7 +50,7 @@ import { useEffect, useState } from 'react';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
-import { deleteDoc, doc, increment, updateDoc } from 'firebase/firestore';
+import { deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Skeleton } from './ui/skeleton';
 
