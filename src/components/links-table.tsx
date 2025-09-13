@@ -46,7 +46,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import type { Link } from '@/lib/definitions';
 import { format, parseISO } from 'date-fns';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Label } from './ui/label';
 import { Input } from './ui/input';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
@@ -61,6 +61,11 @@ export function LinksTable({ links: initialLinks }: LinksTableProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedLink, setSelectedLink] = useState<Link | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleCopy = (shortCode: string) => {
     navigator.clipboard.writeText(`linkwiz.io/${shortCode}`);
@@ -159,7 +164,7 @@ export function LinksTable({ links: initialLinks }: LinksTableProps) {
                   <TableCell className="hidden sm:table-cell">
                     <div className="flex items-center gap-1">
                       <BarChart2 className="h-4 w-4 text-muted-foreground" />
-                      {link.clicks.toLocaleString()}
+                      {isClient ? link.clicks.toLocaleString() : link.clicks}
                     </div>
                   </TableCell>
                   <TableCell className="hidden md:table-cell text-muted-foreground">
