@@ -2,19 +2,25 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    
+    // Function to check if a user is the owner of a link
+    function isLinkOwner(linkId) {
+      return get(/databases/$(database)/documents/links/$(linkId)).data.userId == request.auth.uid;
     }
 
+    // Links can be read by anyone for redirection, but only managed by their owner.
     match /links/{linkId} {
       allow read: if true;
       allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow update, delete: if request.auth.uid == resource.data.userId;
     }
 
+    // Clicks can be created by anyone to log a visit.
+    // They can only be read (queried) by the owner of the corresponding link.
     match /clicks/{clickId} {
       allow create: if true;
-      allow read, update, delete: if false;
+      allow read: if request.auth != null && isLinkOwner(resource.data.linkId);
+      allow update, delete: if false;
     }
   }
 }
