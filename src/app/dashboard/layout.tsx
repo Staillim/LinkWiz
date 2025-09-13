@@ -11,7 +11,7 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from '@/components/ui/sidebar';
-import { Home, Link as LinkIcon, Settings } from 'lucide-react';
+import { Home, Link as LinkIcon, Settings, BarChartBig } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DashboardLayout({
@@ -35,10 +35,18 @@ export default function DashboardLayout({
         <SidebarContent>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton asChild tooltip="My Links" isActive>
+              <SidebarMenuButton asChild tooltip="My Links">
                 <Link href="/dashboard">
                   <Home />
                   <span>My Links</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip="Estadísticas">
+                <Link href="/dashboard/stats">
+                  <BarChartBig />
+                  <span>Estadísticas</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
