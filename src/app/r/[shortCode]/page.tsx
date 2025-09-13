@@ -49,12 +49,14 @@ async function trackAndRedirect(shortCode: string) {
     // 3. Fallback to ipinfo.io/lite if headers are not available and token is present
     if ((!city || !country) && ipCandidate && ipCandidate !== 'unknown' && !ipCandidate.startsWith('127.') && process.env.IPINFO_TOKEN) {
         try {
-            const geoResponse = await fetch(`https://api.ipinfo.io/lite/${ipCandidate}?token=${process.env.IPINFO_TOKEN}`);
+            const geoResponse = await fetch(`https://ipinfo.io/lite/${ipCandidate}?token=${process.env.IPINFO_TOKEN}`);
             if (geoResponse.ok) {
                 const geoData = await geoResponse.json();
                 country = country ?? geoData.country ?? null;
-                // Lite version does not provide city
+                // Lite version does not provide city, so we ensure it's what was found before or null
                 city = city ?? null; 
+            } else {
+               console.error('IPinfo Lite response not ok', geoResponse.status);
             }
         } catch (geoError) {
              console.error('IPinfo Lite fetch failed:', geoError);
