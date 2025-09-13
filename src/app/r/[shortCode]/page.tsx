@@ -14,7 +14,7 @@ import { Loader2 } from 'lucide-react';
 export default function ShortLinkPage() {
   const router = useRouter();
   const params = useParams();
-  const shortCode = params.shortCode as string;
+  const shortCode = params ? (params.shortCode as string) : '';
 
   useEffect(() => {
     const handleRedirect = async () => {
@@ -38,14 +38,9 @@ export default function ShortLinkPage() {
           const linkData = linkDoc.data();
           const originalUrl = linkData.originalUrl;
 
-          // Track click in the background
-          fetch('/api/track', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ linkId: linkDoc.id }),
-          });
+          // Track click in the background using sendBeacon for reliability
+          const data = { linkId: linkDoc.id };
+          navigator.sendBeacon('/api/track', JSON.stringify(data));
 
           // Redirect to original URL
           window.location.href = originalUrl;
