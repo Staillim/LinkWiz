@@ -16,9 +16,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Link as LinkIcon, Loader2, Sparkles, Wand2 } from 'lucide-react';
-import { useFormState } from 'react-dom';
+import { useActionState } from 'react';
 import { getSuggestedSlugAction } from '@/lib/actions';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 const FormSchema = z.object({
@@ -29,7 +29,7 @@ const FormSchema = z.object({
 export function UrlShortenerForm() {
   const { toast } = useToast();
   const [isSuggesting, setIsSuggesting] = useState(false);
-  const [suggestionState, formAction] = useFormState(getSuggestedSlugAction, {
+  const [suggestionState, formAction] = useActionState(getSuggestedSlugAction, {
     slug: null,
     error: null,
   });
