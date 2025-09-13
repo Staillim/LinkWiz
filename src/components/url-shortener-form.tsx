@@ -62,7 +62,7 @@ export function UrlShortenerForm() {
 
       toast({
         title: 'Link Shortened!',
-        description: `Your new link is ready: linkwiz.io/${shortCode}`,
+        description: `Your new link is ready: linkwiz.pro/${shortCode}`,
       });
       form.reset();
     } catch (error: any) {
@@ -117,8 +117,8 @@ export function UrlShortenerForm() {
                   <div className="flex gap-2">
                     <FormControl>
                        <div className="relative w-full">
-                         <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground text-sm">linkwiz.io/</span>
-                         <Input placeholder="my-custom-link" className="pl-[82px]" {...field} />
+                         <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground text-sm">linkwiz.pro/</span>
+                         <Input placeholder="my-custom-link" className="pl-[88px]" {...field} />
                        </div>
                     </FormControl>
                   </div>

@@ -60,9 +60,8 @@ type LinksTableProps = {
   loading: boolean;
 };
 
-export function LinksTable({ links: initialLinks, loading }: LinksTableProps) {
+export function LinksTable({ links, loading }: LinksTableProps) {
   const { toast } = useToast();
-  const [links, setLinks] = useState<Link[]>(initialLinks);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedLink, setSelectedLink] = useState<Link | null>(null);
@@ -74,15 +73,12 @@ export function LinksTable({ links: initialLinks, loading }: LinksTableProps) {
     setIsClient(true);
   }, []);
   
-  useEffect(() => {
-    setLinks(initialLinks);
-  }, [initialLinks]);
 
   const handleCopy = (shortCode: string) => {
-    navigator.clipboard.writeText(`linkwiz.io/${shortCode}`);
+    navigator.clipboard.writeText(`https://linkwiz.pro/${shortCode}`);
     toast({
       title: 'Copied to clipboard!',
-      description: `linkwiz.io/${shortCode}`,
+      description: `https://linkwiz.pro/${shortCode}`,
     });
   };
 
@@ -182,7 +178,7 @@ export function LinksTable({ links: initialLinks, loading }: LinksTableProps) {
                           target="_blank"
                           rel="noopener noreferrer"
                         >
-                          linkwiz.io/{link.shortCode}
+                          linkwiz.pro/{link.shortCode}
                         </a>
                         <Button
                           variant="ghost"
@@ -212,7 +208,7 @@ export function LinksTable({ links: initialLinks, loading }: LinksTableProps) {
                       </div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-muted-foreground">
-                      {isClient ? format(parseISO(link.createdAt), 'MMM d, yyyy') : ''}
+                      {isClient && link.createdAt ? format(parseISO(link.createdAt), 'MMM d, yyyy') : ''}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
