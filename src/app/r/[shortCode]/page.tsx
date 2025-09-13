@@ -20,65 +20,55 @@ async function trackAndRedirect(shortCode: string) {
     notFound();
   }
 
+  const q = query(
+    collection(db, 'links'),
+    where('shortCode', '==', shortCode)
+  );
+  const querySnapshot = await getDocs(q);
+
+  if (querySnapshot.empty) {
+    notFound();
+  } 
+  
+  const linkDoc = querySnapshot.docs[0];
+  const linkData = linkDoc.data();
+  const originalUrl = linkData.originalUrl;
+  const linkId = linkDoc.id;
+
   try {
-    const q = query(
-      collection(db, 'links'),
-      where('shortCode', '==', shortCode)
-    );
-    const querySnapshot = await getDocs(q);
+    const headersList = headers();
+    const xff = headersList.get('x-forwarded-for');
+    const ipCandidate = xff ? xff.split(',')[0].trim() : headersList.get('x-real-ip') ?? 'unknown';
 
-    if (querySnapshot.empty) {
-      console.error('No such link!');
-      notFound();
-    } else {
-      const linkDoc = querySnapshot.docs[0];
-      const linkData = linkDoc.data();
-      const originalUrl = linkData.originalUrl;
-      const linkId = linkDoc.id;
-
-      // 1. Capture IP from request headers
-      const headersList = headers();
-      const xff = headersList.get('x-forwarded-for');
-      const ipCandidate = xff ? xff.split(',')[0].trim() : headersList.get('x-real-ip') ?? 'unknown';
-
-      // 2. Call ipapi.co
-      let geoData: any = {};
-      try {
-        if (ipCandidate && ipCandidate !== 'unknown' && !ipCandidate.startsWith('127.')) {
-            const geoResponse = await fetch(`https://ipapi.co/${ipCandidate}/json/`);
-            if (geoResponse.ok) {
-                geoData = await geoResponse.json();
-            }
+    let geoData: any = {};
+    if (ipCandidate && ipCandidate !== 'unknown' && !ipCandidate.startsWith('127.')) {
+        const geoResponse = await fetch(`https://ipapi.co/${ipCandidate}/json/`);
+        if (geoResponse.ok) {
+            geoData = await geoResponse.json();
         }
-      } catch (geoError) {
-        console.error('Geolocation fetch failed:', geoError);
-        // Don't block redirect if geo lookup fails
-      }
-
-      // 3. Save click data to Firestore
-      const userAgent = headersList.get('user-agent') ?? null;
-      const ipAddress = geoData.ip ?? ipCandidate;
-      const city = geoData.city ?? null;
-      const country = geoData.country_name ?? geoData.country ?? null;
-
-      const clickData = {
-        linkId,
-        timestamp: serverTimestamp(),
-        ipAddress,
-        city,
-        country,
-        userAgent,
-      };
-
-      await addDoc(collection(db, 'clicks'), clickData);
-
-      // 4. Redirect to original URL
-      redirect(originalUrl);
     }
+
+    const userAgent = headersList.get('user-agent') ?? null;
+    const ipAddress = geoData.ip ?? ipCandidate;
+    const city = geoData.city ?? null;
+    const country = geoData.country_name ?? geoData.country ?? null;
+
+    const clickData = {
+      linkId,
+      timestamp: serverTimestamp(),
+      ipAddress,
+      city,
+      country,
+      userAgent,
+    };
+
+    await addDoc(collection(db, 'clicks'), clickData);
   } catch (error) {
-    console.error('Error handling redirect:', error);
-    redirect('/dashboard'); // Redirect to dashboard on other errors
+    console.error('Error tracking click:', error);
+    // Don't block redirect if tracking fails
   }
+
+  redirect(originalUrl);
 }
 
 export default async function ShortLinkPage({ params }: { params: { shortCode: string } }) {
