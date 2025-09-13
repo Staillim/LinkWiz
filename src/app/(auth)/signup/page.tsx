@@ -20,7 +20,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   createUserWithEmailAndPassword,
@@ -28,6 +28,7 @@ import {
   signInWithPopup,
   updateProfile,
 } from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Link as LinkIcon, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -84,9 +85,19 @@ export default function SignupPage() {
         data.email,
         data.password
       );
-      await updateProfile(userCredential.user, {
+      const user = userCredential.user;
+      await updateProfile(user, {
         displayName: data.name,
       });
+
+      await setDoc(doc(db, 'users', user.uid), {
+        uid: user.uid,
+        displayName: data.name,
+        email: user.email,
+        createdAt: serverTimestamp(),
+        photoURL: user.photoURL,
+      });
+
       toast({
         title: 'Account Created',
         description: "You've been successfully signed up.",
@@ -104,7 +115,17 @@ export default function SignupPage() {
   const handleGoogleSignUp = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      await setDoc(doc(db, 'users', user.uid), {
+        uid: user.uid,
+        displayName: user.displayName,
+        email: user.email,
+        createdAt: serverTimestamp(),
+        photoURL: user.photoURL,
+      });
+
       toast({
         title: 'Sign Up Successful',
         description: 'Welcome!',
