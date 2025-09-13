@@ -128,14 +128,11 @@ export function UrlShortenerForm() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Custom Slug (Optional)</FormLabel>
-                   <div className="flex items-center">
-                     <span className="text-muted-foreground text-sm pr-2">{host ? `${host.replace(/https?:\/\//, '')}/r/` : ''}</span>
-                      <FormControl>
-                         <Input placeholder="my-custom-link" {...field} />
-                      </FormControl>
-                   </div>
+                   <FormControl>
+                      <Input placeholder="my-custom-link" {...field} />
+                   </FormControl>
                   <FormDescription>
-                    Customize your short link for better branding.
+                    Your custom slug will be appended to the domain. Example: {host}/r/my-custom-link
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
