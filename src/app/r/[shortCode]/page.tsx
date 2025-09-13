@@ -20,10 +20,10 @@ export default function ShortLinkPage({
   params: { shortCode: string };
 }) {
   const router = useRouter();
-  const { shortCode } = params;
 
   useEffect(() => {
     const handleRedirect = async () => {
+      const shortCode = params.shortCode;
       if (!shortCode) {
         router.push('/dashboard');
         return;
@@ -59,7 +59,7 @@ export default function ShortLinkPage({
     };
 
     handleRedirect();
-  }, [shortCode, router]);
+  }, [params.shortCode, router]);
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-background">
