@@ -1,26 +1,22 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import {
   collection,
   query,
   where,
   getDocs,
-  doc,
   addDoc,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
 
-export default function ShortLinkPage({
-  params,
-}: {
-  params: { shortCode: string };
-}) {
+export default function ShortLinkPage() {
   const router = useRouter();
-  const { shortCode } = params;
+  const params = useParams();
+  const shortCode = params.shortCode as string;
 
   useEffect(() => {
     const handleRedirect = async () => {
