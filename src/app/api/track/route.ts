@@ -1,3 +1,4 @@
+
 import { db } from '@/lib/firebase';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { NextRequest, NextResponse } from 'next/server';
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
                  clickData = {
                     ...clickData,
                     ipAddress: data.ip || ip,
-                    country: data.country_code, // Using country_code for the short version like 'CO'
+                    country: data.country_code,
                     city: data.city,
                 };
             }
