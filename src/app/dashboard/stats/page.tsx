@@ -40,6 +40,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { startOfWeek, eachDayOfInterval, format, subMonths, getYear, getDay, startOfMonth, endOfMonth, getMonth, setMonth, setYear } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { formatInTimeZone } from 'date-fns-tz';
 
 type TopListItem = {
   name: string;
@@ -151,7 +152,8 @@ export default function StatsPage() {
     const today = new Date();
 
     if (timeRange === 'week') {
-        interval = { start: startOfWeek(today, { weekStartsOn: 1 }), end: today };
+        const start = startOfWeek(today, { weekStartsOn: 1 });
+        interval = { start: start, end: today };
     } else { // month
         interval = { start: startOfMonth(selectedMonthDate), end: endOfMonth(selectedMonthDate) };
     }
@@ -175,7 +177,6 @@ export default function StatsPage() {
     setChartData(dataForChart);
 
 }, [allClicks, timeRange, selectedMonthDate, loading]);
-
 
   const chartConfig = {
     clicks: {
@@ -215,13 +216,11 @@ export default function StatsPage() {
   );
   
   const formatXAxisTick = (value: string) => {
+    const date = new Date(`${value}T00:00:00`); // Interpret as local time to avoid shifting
     if (timeRange === 'week') {
-      const dayIndex = getDay(new Date(value));
-      // Sunday is 0, so we map it to the end of the week.
-      const dayNames = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
-      return dayNames[dayIndex];
+      return format(date, 'eee', { locale: es }); // Use 'eee' for short day name
     }
-    return format(new Date(value), 'd');
+    return format(date, 'd');
   };
   
   const handleMonthChange = (monthValue: string) => {
@@ -355,7 +354,13 @@ export default function StatsPage() {
                   cursor={false}
                   content={<ChartTooltipContent 
                     indicator="dot" 
-                    labelFormatter={(label, payload) => payload?.[0] ? format(new Date(payload[0].payload.date), 'eeee, d \'de\' MMMM', {locale: es}) : ''}
+                    labelFormatter={(value) => {
+                      try {
+                        return formatInTimeZone(value, 'UTC', "eeee, d 'de' MMMM", { locale: es });
+                      } catch (e) {
+                        return value;
+                      }
+                    }}
                    />}
                 />
                 <Area
