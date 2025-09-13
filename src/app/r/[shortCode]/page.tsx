@@ -43,8 +43,8 @@ async function trackAndRedirect(shortCode: string) {
     const ipCandidate = xff ? xff.split(',')[0].trim() : headersList.get('x-real-ip') ?? 'unknown';
 
     // 2. Try to get geo data from hosting headers first
-    let city = headersList.get('x-vercel-ip-city') ?? null;
-    let country = headersList.get('x-vercel-ip-country') ?? null;
+    let city = headersList.get('x-vercel-ip-city') ?? headersList.get('x-appengine-city') ?? null;
+    let country = headersList.get('x-vercel-ip-country') ?? headersList.get('x-appengine-country') ?? null;
     
     // 3. Fallback to external API if headers are not available
     if ((!city || !country) && ipCandidate && ipCandidate !== 'unknown' && !ipCandidate.startsWith('127.')) {
