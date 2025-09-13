@@ -40,7 +40,8 @@ export default function ShortLinkPage() {
 
           // Track click in the background using sendBeacon for reliability
           const data = { linkId: linkDoc.id };
-          navigator.sendBeacon('/api/track', JSON.stringify(data));
+          const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+          navigator.sendBeacon('/api/track', blob);
 
           // Redirect to original URL
           window.location.href = originalUrl;
