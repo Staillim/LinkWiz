@@ -12,10 +12,12 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
+import { notFound } from 'next/navigation';
+
 
 async function trackAndRedirect(shortCode: string) {
   if (!shortCode) {
-    redirect('/dashboard');
+    notFound();
   }
 
   try {
@@ -27,7 +29,7 @@ async function trackAndRedirect(shortCode: string) {
 
     if (querySnapshot.empty) {
       console.error('No such link!');
-      redirect('/dashboard');
+      notFound();
     } else {
       const linkDoc = querySnapshot.docs[0];
       const linkData = linkDoc.data();
@@ -42,7 +44,7 @@ async function trackAndRedirect(shortCode: string) {
       // 2. Call ipapi.co
       let geoData: any = {};
       try {
-        if (ipCandidate && ipCandidate !== 'unknown') {
+        if (ipCandidate && ipCandidate !== 'unknown' && !ipCandidate.startsWith('127.')) {
             const geoResponse = await fetch(`https://ipapi.co/${ipCandidate}/json/`);
             if (geoResponse.ok) {
                 geoData = await geoResponse.json();
@@ -75,15 +77,11 @@ async function trackAndRedirect(shortCode: string) {
     }
   } catch (error) {
     console.error('Error handling redirect:', error);
-    redirect('/dashboard');
+    redirect('/dashboard'); // Redirect to dashboard on other errors
   }
 }
 
 export default async function ShortLinkPage({ params }: { params: { shortCode: string } }) {
-  // Although this component renders a loading state,
-  // the server-side logic in trackAndRedirect will run first.
-  // If successful, it will redirect before the user sees this page.
-  // This is shown only if there's a delay or for non-JS clients.
   await trackAndRedirect(params.shortCode);
 
   return (
