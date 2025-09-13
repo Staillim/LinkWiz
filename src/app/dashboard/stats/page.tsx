@@ -26,15 +26,19 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getDeviceFromUserAgent } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { startOfWeek, eachDayOfInterval, format, subMonths, getYear, getDay, startOfMonth, endOfMonth } from 'date-fns';
+import { startOfWeek, eachDayOfInterval, format, subMonths, getYear, getDay, startOfMonth, endOfMonth, getMonth, setMonth, setYear } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 type TopListItem = {
@@ -53,8 +57,7 @@ export default function StatsPage() {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('week');
   const [allClicks, setAllClicks] = useState<any[]>([]);
-  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [selectedMonthDate, setSelectedMonthDate] = useState<Date>(new Date());
 
   useEffect(() => {
     if (authLoading || !user) {
@@ -150,7 +153,7 @@ export default function StatsPage() {
     if (timeRange === 'week') {
         interval = { start: startOfWeek(today, { weekStartsOn: 1 }), end: today };
     } else { // month
-        interval = { start: startOfMonth(selectedMonth), end: endOfMonth(selectedMonth) };
+        interval = { start: startOfMonth(selectedMonthDate), end: endOfMonth(selectedMonthDate) };
     }
     
     const daysInInterval = eachDayOfInterval(interval);
@@ -171,7 +174,7 @@ export default function StatsPage() {
 
     setChartData(dataForChart);
 
-}, [allClicks, timeRange, selectedMonth, loading]);
+}, [allClicks, timeRange, selectedMonthDate, loading]);
 
 
   const chartConfig = {
@@ -221,13 +224,31 @@ export default function StatsPage() {
     }
     return format(new Date(value), 'd');
   };
-
-  const handleMonthSelect = (day: Date | undefined) => {
-    if (day) {
-        setSelectedMonth(day);
-        setIsCalendarOpen(false);
+  
+  const handleMonthChange = (monthValue: string) => {
+    const newDate = setMonth(selectedMonthDate, parseInt(monthValue));
+    if (newDate > new Date()) {
+      setSelectedMonthDate(new Date());
+    } else {
+      setSelectedMonthDate(newDate);
     }
   };
+
+  const handleYearChange = (yearValue: string) => {
+    const newDate = setYear(selectedMonthDate, parseInt(yearValue));
+     if (newDate > new Date()) {
+      setSelectedMonthDate(new Date());
+    } else {
+      setSelectedMonthDate(newDate);
+    }
+  };
+
+  const availableYears = [getYear(new Date()), getYear(subMonths(new Date(), 12))];
+  const monthOptions = Array.from({ length: 12 }, (_, i) => ({
+      value: i.toString(),
+      label: format(new Date(2000, i), 'MMMM', { locale: es }),
+  }));
+
 
   return (
     <div className="space-y-8">
@@ -276,37 +297,43 @@ export default function StatsPage() {
                   <Tabs value={timeRange} onValueChange={setTimeRange} className="w-full sm:w-auto">
                       <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="week">Esta semana</TabsTrigger>
-                      <TabsTrigger value="month">Este mes</TabsTrigger>
+                      <TabsTrigger value="month">Por mes</TabsTrigger>
                       </TabsList>
                   </Tabs>
               </div>
           </div>
           {timeRange === 'month' && (
-              <div className="mt-4 flex justify-start">
-                  <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
-                      <PopoverTrigger asChild>
-                      <Button
-                          variant={'outline'}
-                          className="w-[200px] justify-start text-left font-normal"
-                      >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {format(selectedMonth, 'MMMM yyyy', { locale: es })}
-                      </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                      <Calendar
-                          mode="single"
-                          selected={selectedMonth}
-                          onSelect={handleMonthSelect}
-                          defaultMonth={selectedMonth}
-                          initialFocus
-                          captionLayout="dropdown-buttons"
-                          fromYear={getYear(subMonths(new Date(), 24))}
-                          toYear={getYear(new Date())}
-                          disabled={(date) => date > new Date() || date < new Date('2022-01-01')}
-                      />
-                      </PopoverContent>
-                  </Popover>
+              <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                  <Select
+                    value={getMonth(selectedMonthDate).toString()}
+                    onValueChange={handleMonthChange}
+                  >
+                      <SelectTrigger className="w-full sm:w-[180px]">
+                          <SelectValue placeholder="Seleccionar mes" />
+                      </SelectTrigger>
+                      <SelectContent>
+                          {monthOptions.map(option => (
+                              <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                              </SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
+                  <Select
+                     value={getYear(selectedMonthDate).toString()}
+                     onValueChange={handleYearChange}
+                  >
+                      <SelectTrigger className="w-full sm:w-[120px]">
+                          <SelectValue placeholder="Seleccionar año" />
+                      </SelectTrigger>
+                      <SelectContent>
+                          {availableYears.map(year => (
+                            <SelectItem key={year} value={year.toString()}>
+                                {year}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
               </div>
           )}
         </CardHeader>
@@ -323,7 +350,7 @@ export default function StatsPage() {
                   axisLine={false}
                   tickMargin={8}
                   tickFormatter={formatXAxisTick}
-                  label={{ value: timeRange === 'month' ? format(selectedMonth, 'MMMM', {locale: es}) : 'Días de la semana', position: 'insideBottom', offset: -15, fill: 'hsl(var(--muted-foreground))' }}
+                  label={{ value: timeRange === 'month' ? format(selectedMonthDate, 'MMMM', {locale: es}) : 'Días de la semana', position: 'insideBottom', offset: -15, fill: 'hsl(var(--muted-foreground))' }}
                 />
                 <ChartTooltip
                   cursor={false}
