@@ -4,7 +4,7 @@ import { LinksTable } from '@/components/links-table';
 import { UrlShortenerForm } from '@/components/url-shortener-form';
 import { auth, db } from '@/lib/firebase';
 import { Link as LinkType } from '@/lib/definitions';
-import { collection, onSnapshot, query, where, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { useAuthState } from 'react-firebase-hooks/auth';
 
@@ -14,46 +14,68 @@ export default function DashboardPage() {
   const [user, authLoading] = useAuthState(auth);
 
   useEffect(() => {
-    if (authLoading) {
+    if (authLoading || !user) {
+      setLoading(false);
       return;
     }
+
+    const linksQuery = query(collection(db, 'links'), where('userId', '==', user.uid));
     
-    if (user) {
-      const q = query(collection(db, 'links'), where('userId', '==', user.uid));
-      const unsubscribe = onSnapshot(q, async (querySnapshot) => {
-        const userLinksPromises = querySnapshot.docs.map(async (doc) => {
+    const unsubscribeLinks = onSnapshot(linksQuery, (linksSnapshot) => {
+      const userLinks: Omit<LinkType, 'clicks'>[] = linksSnapshot.docs
+        .map((doc) => {
           const data = doc.data();
           if (data.createdAt) {
-            
-            const clicksQuery = query(collection(db, 'clicks'), where('linkId', '==', doc.id));
-            const clicksSnapshot = await getDocs(clicksQuery);
-
             return {
               id: doc.id,
               originalUrl: data.originalUrl,
               shortCode: data.shortCode,
-              clicks: clicksSnapshot.size,
               createdAt: data.createdAt.toDate().toISOString(),
               userId: data.userId,
             };
           }
           return null;
+        })
+        .filter(Boolean) as Omit<LinkType, 'clicks'>[];
+      
+      const linkIds = userLinks.map(link => link.id);
+
+      if (linkIds.length === 0) {
+        setLinks([]);
+        setLoading(false);
+        return;
+      }
+
+      const clicksQuery = query(collection(db, 'clicks'), where('linkId', 'in', linkIds));
+
+      const unsubscribeClicks = onSnapshot(clicksQuery, (clicksSnapshot) => {
+        const clicksCountByLinkId = new Map<string, number>();
+
+        clicksSnapshot.forEach((doc) => {
+          const linkId = doc.data().linkId;
+          clicksCountByLinkId.set(linkId, (clicksCountByLinkId.get(linkId) || 0) + 1);
         });
 
-        const resolvedLinks = (await Promise.all(userLinksPromises)).filter(Boolean) as LinkType[];
-        
-        setLinks(resolvedLinks);
+        const linksWithClicks: LinkType[] = userLinks.map(link => ({
+          ...link,
+          clicks: clicksCountByLinkId.get(link.id) || 0,
+        }));
+
+        setLinks(linksWithClicks);
         setLoading(false);
       }, (error) => {
-        console.error("Error fetching links: ", error);
+        console.error("Error fetching clicks: ", error);
         setLoading(false);
       });
 
-      return () => unsubscribe();
-    } else {
-      setLinks([]);
+      return () => unsubscribeClicks();
+
+    }, (error) => {
+      console.error("Error fetching links: ", error);
       setLoading(false);
-    }
+    });
+
+    return () => unsubscribeLinks();
   }, [user, authLoading]);
 
   return (
