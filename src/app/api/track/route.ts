@@ -10,48 +10,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'linkId is required' }, { status: 400 });
     }
 
-    // Obtener IP de forma robusta (X-Forwarded-For primero, luego x-real-ip, luego req.ip si está disponible)
+    // Obtener IP de forma robusta
     const xff = req.headers.get('x-forwarded-for');
     const ipFromHeader = xff ? xff.split(',')[0].trim() : undefined;
     const ipCandidate = (req as any).ip ?? ipFromHeader ?? req.headers.get('x-real-ip') ?? null;
 
-    if (!ipCandidate) {
-      return NextResponse.json({ error: 'Client IP not found' }, { status: 400 });
-    }
-
     const userAgent = req.headers.get('user-agent') ?? null;
 
     // Llamada a ipapi para extraer datos reales
-    let geoData: any;
+    let geoData: any = {};
     try {
-      const geoResponse = await fetch(`https://ipapi.co/${ipCandidate}/json/`);
-      if (!geoResponse.ok) {
-        console.error('ipapi responded with non-OK status:', geoResponse.status);
-        return NextResponse.json({ error: 'Geolocation lookup failed' }, { status: 502 });
+      if (ipCandidate) {
+        const geoResponse = await fetch(`https://ipapi.co/${ipCandidate}/json/`);
+        if (geoResponse.ok) {
+          geoData = await geoResponse.json();
+        } else {
+          console.error('ipapi responded with non-OK status:', geoResponse.status);
+        }
       }
-      geoData = await geoResponse.json();
     } catch (geoError) {
       console.error('Geolocation fetch failed:', geoError);
-      return NextResponse.json({ error: 'Geolocation lookup failed' }, { status: 502 });
     }
 
-    // Verificar que la API devolvió datos válidos (sin campo error) y que tenemos los campos que necesitamos
-    if (geoData?.error) {
-      console.error('ipapi returned error:', geoData);
-      return NextResponse.json({ error: 'Geolocation service returned an error' }, { status: 502 });
-    }
-
-    const ipAddress = geoData.ip ?? null;
+    // Extraer valores, si no existen se ponen en null
+    const ipAddress = geoData.ip ?? ipCandidate ?? null;
     const city = geoData.city ?? null;
-    // Guardamos el nombre completo del país si está disponible; si no, tomamos el código (pero preferimos country_name)
     const country = geoData.country_name ?? geoData.country ?? null;
 
-    if (!ipAddress || !city || !country) {
-      console.error('Geolocation data incomplete:', { ipAddress, city, country, geoData });
-      return NextResponse.json({ error: 'Geolocation data incomplete' }, { status: 502 });
-    }
-
-    // Construir solo los campos que pediste
+    // Construir siempre el objeto (aunque falten valores)
     const clickData = {
       linkId,
       timestamp: serverTimestamp(),
