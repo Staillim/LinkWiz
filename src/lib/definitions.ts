@@ -10,5 +10,12 @@ export type Link = {
 export type Click = {
   id: string;
   linkId: string;
-  timestamp: string;
+  timestamp: any;
+  ipAddress?: string;
+  userAgent?: string;
+  country?: string;
+  city?: string;
+  region?: string;
+  latitude?: number;
+  longitude?: number;
 };

@@ -7,8 +7,6 @@ import {
   query,
   where,
   getDocs,
-  addDoc,
-  serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
@@ -40,10 +38,13 @@ export default function ShortLinkPage() {
           const linkData = linkDoc.data();
           const originalUrl = linkData.originalUrl;
 
-          // Add a click document
-          await addDoc(collection(db, 'clicks'), {
-            linkId: linkDoc.id,
-            timestamp: serverTimestamp(),
+          // Track click in the background
+          fetch('/api/track', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ linkId: linkDoc.id }),
           });
 
           // Redirect to original URL
