@@ -6,13 +6,19 @@ import { auth, db } from '@/lib/firebase';
 import { Link as LinkType } from '@/lib/definitions';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
+import { useAuthState } from 'react-firebase-hooks/auth';
 
 export default function DashboardPage() {
   const [links, setLinks] = useState<LinkType[]>([]);
   const [loading, setLoading] = useState(true);
-  const user = auth.currentUser;
+  const [user, authLoading] = useAuthState(auth);
 
   useEffect(() => {
+    if (authLoading) {
+      // Still loading user state, do nothing yet.
+      return;
+    }
+    
     if (user) {
       const q = query(collection(db, 'links'), where('userId', '==', user.uid));
       const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -30,18 +36,23 @@ export default function DashboardPage() {
         });
         setLinks(userLinks);
         setLoading(false);
+      }, (error) => {
+        console.error("Error fetching links: ", error);
+        setLoading(false);
       });
 
       return () => unsubscribe();
     } else {
+      // User is not logged in
+      setLinks([]);
       setLoading(false);
     }
-  }, [user]);
+  }, [user, authLoading]);
 
   return (
     <div className="space-y-8">
       <UrlShortenerForm />
-      <LinksTable links={links} loading={loading} />
+      <LinksTable links={links} loading={loading || authLoading} />
     </div>
   );
 }
