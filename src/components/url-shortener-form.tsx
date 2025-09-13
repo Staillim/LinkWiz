@@ -131,9 +131,6 @@ export function UrlShortenerForm() {
                    <FormControl>
                       <Input placeholder="my-custom-link" {...field} />
                    </FormControl>
-                  <FormDescription>
-                    Your custom slug will be appended to the domain. Example: {host}/r/my-custom-link
-                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
